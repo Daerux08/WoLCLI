@@ -88,11 +88,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "/home/alexander/Documents/GitHub/WoLCLI/MenuEngine.cs Example/WoLCLI.csproj",
+      "projectUniqueName": "/home/alexander/Documents/GitHub/WoLCLI/WolCLI/WoLCLI.csproj",
       "projectName": "WoLCLI",
-      "projectPath": "/home/alexander/Documents/GitHub/WoLCLI/MenuEngine.cs Example/WoLCLI.csproj",
+      "projectPath": "/home/alexander/Documents/GitHub/WoLCLI/WolCLI/WoLCLI.csproj",
       "packagesPath": "/home/alexander/.nuget/packages/",
-      "outputPath": "/home/alexander/Documents/GitHub/WoLCLI/MenuEngine.cs Example/obj/",
+      "outputPath": "/home/alexander/Documents/GitHub/WoLCLI/WolCLI/obj/",
       "projectStyle": "PackageReference",
       "configFilePaths": [
         "/home/alexander/.nuget/NuGet/NuGet.Config"
