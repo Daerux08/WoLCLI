@@ -1,0 +1,6 @@
+//standard gitignore file for C# COnsole Applications
+# Ignore Visual Studio temporary files, build results, and
+
+bin/
+obj/
+

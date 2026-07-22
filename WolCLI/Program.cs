@@ -15,13 +15,14 @@ public class WolConfig
     public string ?MacAddress { get; set; }//code name for the property
     
     [JsonPropertyName("passwordHash")]
-    public string ?PHash { get; set; }
+    public string ?PHash { get; set; }//password, to restrict the ability 
+    //to send WOL packets to only those who know the password. This is hashed for security.
 
     [JsonPropertyName("broadcastAddress")]
     public string ?BroadcastAddress { get; set; }
 }
 
-class Program
+partial class Program
 {
     static string configPath = "prod.json";
 
@@ -53,10 +54,43 @@ class Program
         {
             await MenuEngine.DisplayMenuAsync(new List<(string, Func<Task>)>
             {
-                ("Wake the PC", WakePC),
+                ("Wake the PC", PasswordPrompt),
                 ("⚙️ Settings", SettingsMenuME),
                 ("❌ Exit", ExitApp)
             });
+        }
+    }
+
+    static async Task PasswordPrompt()
+    {
+        if (string.IsNullOrEmpty(ReadConfig().PHash))
+        {
+            await WakePC();
+        }
+        else
+        {
+            await VerifyPassword();
+        }
+    }
+
+    static async Task VerifyPassword()
+    {
+        var config = ReadConfig();
+        string password = MenuEngine.TextInput("Enter password");
+        using (SHA256 sha256Hash = SHA256.Create())
+        {
+            byte[] bytes = sha256Hash.ComputeHash(Encoding.UTF8.GetBytes(password));
+            string hash = BitConverter.ToString(bytes).Replace("-", "").ToLowerInvariant();
+
+            if (hash == config.PHash)
+            {
+                await WakePC();
+            }
+            else
+            {
+                MenuEngine.ErrorMessage("Incorrect password. Please try again.");
+                await PasswordPrompt();
+            }
         }
     }
 
@@ -150,6 +184,28 @@ class Program
 
     static async Task WakePC()
     {
+        var config = ReadConfig();
+        if (string.IsNullOrEmpty(config.MacAddress))
+        {
+            MenuEngine.ErrorMessage("MAC address not found. Please enter a MAC address first.");
+            await EnterMac();
+            return;
+        }
+
+        if (string.IsNullOrEmpty(config.BroadcastAddress))
+        {
+            MenuEngine.ErrorMessage("Broadcast address not found. Please enter a broadcast address first.");
+            await EnterBroadcastAddress();
+            return;
+        }
+
+        else
+        {
+            WolPackage.SendMagicPacket(config.MacAddress, config.BroadcastAddress);
+            MenuEngine.GeneralMessage($"Sent Wake-on-LAN packet to {config.MacAddress}");
+        }
+        
+
         
     }
 
