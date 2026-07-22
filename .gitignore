@@ -6,3 +6,4 @@ obj/
 prod.json/
 WolCLI/prod.json
 WolCLI/.~lock.prod.json\#
+*.json
