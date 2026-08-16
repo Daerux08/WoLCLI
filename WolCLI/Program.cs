@@ -15,7 +15,7 @@ public class WolConfig
     public string ?MacAddress { get; set; }//code name for the property
     
     [JsonPropertyName("passwordHash")]
-    public string ?PHash { get; set; }//password, to restrict the ability 
+    public string ?PHash { get; set; } //Password 
     //to send WOL packets to only those who know the password. This is hashed for security.
 
     [JsonPropertyName("broadcastAddress")]
@@ -24,7 +24,12 @@ public class WolConfig
 
 partial class Program
 {
-    static string configPath = "prod.json";
+    static readonly string configPath =
+        Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+            "WolCLI",
+            "prod.json"
+        );
 
     static WolConfig ReadConfig()
     {
@@ -33,7 +38,26 @@ partial class Program
             string json = File.ReadAllText(configPath);
             return JsonSerializer.Deserialize<WolConfig>(json) ?? new WolConfig { MacAddress = "", PHash = "", BroadcastAddress = "" };
         }
-        return new WolConfig { MacAddress = "", PHash = "", BroadcastAddress = "" };
+        else
+        {
+        Directory.CreateDirectory(Path.GetDirectoryName(configPath));
+
+        var defaultConfig = new WolConfig
+        {
+            MacAddress = "",
+            PHash = "",
+            BroadcastAddress = ""
+        };
+
+        string json = JsonSerializer.Serialize(defaultConfig, new JsonSerializerOptions { WriteIndented = true });
+        File.WriteAllText(configPath, json);
+
+        MenuEngine.GeneralMessage("Config file not found. Creating a new one.");
+
+        return defaultConfig;
+
+        }
+        
     }
 
     static void WriteConfig(WolConfig config)
@@ -106,8 +130,8 @@ partial class Program
         {
             MenuEngine.ErrorMessage("MAC address not found in JSON.");
             bool confirm = MenuEngine.YesNoPrompt("Would you like to enter a MAC address now?",
-                "[green]MAC address entered[/]",
-                "[red]Please enter a MAC address[/]");
+                "[green]Proceeding...[/]",
+                "[red]Please enter the MAC address of the target PC[/]");
             if (confirm)
             {
                 await EnterMac();
