@@ -23,7 +23,7 @@ using System.Threading.Tasks;
         }
 
         public static void ShowError(string title, string message)
-        {
+        {//for complicated error messages, use case is when we want to show a path to fix it
             var panel = new Panel(message)
             {
                 Border = BoxBorder.Rounded,
@@ -48,7 +48,7 @@ using System.Threading.Tasks;
         }
 
         public static string GetUserInput(string prompt, string defaultValue = "")
-        {
+        { //used for numerical inputs
             return AnsiConsole.Ask<string>(prompt + ":") ?? defaultValue;
         }
 
@@ -76,7 +76,7 @@ using System.Threading.Tasks;
         }
 
         public static async Task DisplayMenu(List<(string, Func<Task>)> menu)
-        {
+        {//display only when the Menu HAS to take precedence/must NOT risk race conditions(works as a prototype)
             AnsiConsole.Clear();
             var choice = AnsiConsole.Prompt(
                 new SelectionPrompt<string>()
@@ -94,8 +94,8 @@ using System.Threading.Tasks;
             }
         }
 
-        public static async Task DisplayMenuAsync(List<(string, Func<Task>)> menu)
-        {
+        public static async Task DisplayMenuAsync(List<(string, Func<Task>)> menu) 
+        { 
             AnsiConsole.Clear();
             var choice = AnsiConsole.Prompt(
                 new SelectionPrompt<string>()
@@ -133,7 +133,7 @@ using System.Threading.Tasks;
         }
 
         public static string TextInput(string prompt)
-        {
+        {//returns string
             var input = AnsiConsole.Prompt(
                 new TextPrompt<string>(prompt)
                 .PromptStyle(new Style(foreground: Color.Green1, decoration: Decoration.Bold)));
@@ -141,7 +141,7 @@ using System.Threading.Tasks;
         }
 
         public static void ErrorMessage(string message)
-        {
+        {//simpler error message
             AnsiConsole.MarkupLine($"[red]{message}[/]");
         }
 
@@ -151,7 +151,8 @@ using System.Threading.Tasks;
         }
 
         public static void EscapeKey()
-        {
+        {//method used to return to a previous ring of Menu, using this method inside a Menu method above 
+        //will make it while (true) loop automatically. 
             while (true)
             {
                 var key = Console.ReadKey(true);
