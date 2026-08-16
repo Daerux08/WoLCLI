@@ -1,0 +1,60 @@
+# .gitignore for WoLCLI (.NET)
+
+# Build outputs
+bin/
+obj/
+publish/
+
+# VS Code and Visual Studio
+.vscode/
+.vs/
+
+# Rider / JetBrains
+.idea/
+*.sln.iml
+
+# Visual Studio files
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# NuGet
+*.nupkg
+*.snupkg
+.nuget/
+packages/
+
+# Test and coverage
+TestResults/
+coverage/
+
+# Logs
+*.log
+
+# Runtime files
+*.deps.json
+*.runtimeconfig.json
+createdump
+
+# Debian/packaging outputs
+Package/
+*.deb
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Secrets and local settings
+secrets.json
+appsettings.*.local.json
+
+# Misc
+*.pdb
+*.cache
+
+# Ignore workspace-specific prod.json locks and editor backups
+prod.json
+WolCLI/prod.json
+WolCLI/.~lock.prod.json#
+
