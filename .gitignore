@@ -4,6 +4,8 @@
 bin/
 obj/
 publish/
+WolCLI/bin/
+WolCLI/obj/
 
 # VS Code and Visual Studio
 .vscode/
