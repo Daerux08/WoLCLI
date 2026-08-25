@@ -9,10 +9,12 @@ A small, fast, cross-platform command-line tool to send Wake-on-LAN "magic packe
 - Works cross-platform (Windows, Linux, macOS) using .NET.
 - Simple scripting-friendly output for automation and CI.
 
-## Quick start
+## Changes
+- Made the app AOT, removing the need of having any .NET installation.
 
+
+## Quick start
 Prerequisites
-- .NET 6.0+ SDK (or the specific target framework your build uses)
 - Network access to the target's broadcast domain (or configured routed relay)
 
 Install (build from source)
