@@ -6,20 +6,24 @@ using System.Text.Json;
 using System.Security.Cryptography;
 using System.IO;
 using System.Text;
-
 using System.Text.Json.Serialization;
 
 public class WolConfig
 {
-    [JsonPropertyName("macAddress")] //name inside JSON
-    public string ?MacAddress { get; set; }//code name for the property
+    [JsonPropertyName("macAddress")]
+    public string? MacAddress { get; set; }
     
     [JsonPropertyName("passwordHash")]
-    public string ?PHash { get; set; } //Password 
-    //to send WOL packets to only those who know the password. This is hashed for security.
+    public string? PHash { get; set; } 
 
     [JsonPropertyName("broadcastAddress")]
-    public string ?BroadcastAddress { get; set; }
+    public string? BroadcastAddress { get; set; }
+}
+
+// ─── Native AOT JSON Source Generator Context ───
+[JsonSerializable(typeof(WolConfig))]
+internal partial class AppJsonSerializerContext : JsonSerializerContext
+{
 }
 
 partial class Program
@@ -36,33 +40,35 @@ partial class Program
         if (File.Exists(configPath))
         {
             string json = File.ReadAllText(configPath);
-            return JsonSerializer.Deserialize<WolConfig>(json) ?? new WolConfig { MacAddress = "", PHash = "", BroadcastAddress = "" };
+            // Use Source Generator Context instead of reflection
+            return JsonSerializer.Deserialize(json, AppJsonSerializerContext.Default.WolConfig) 
+                   ?? new WolConfig { MacAddress = "", PHash = "", BroadcastAddress = "" };
         }
         else
         {
-        Directory.CreateDirectory(Path.GetDirectoryName(configPath));
+            Directory.CreateDirectory(Path.GetDirectoryName(configPath)!);
 
-        var defaultConfig = new WolConfig
-        {
-            MacAddress = "",
-            PHash = "",
-            BroadcastAddress = ""
-        };
+            var defaultConfig = new WolConfig
+            {
+                MacAddress = "",
+                PHash = "",
+                BroadcastAddress = ""
+            };
 
-        string json = JsonSerializer.Serialize(defaultConfig, new JsonSerializerOptions { WriteIndented = true });
-        File.WriteAllText(configPath, json);
+            // Use Source Generator Context here as well
+            string json = JsonSerializer.Serialize(defaultConfig, AppJsonSerializerContext.Default.WolConfig);
+            File.WriteAllText(configPath, json);
 
-        MenuEngine.GeneralMessage("Config file not found. Creating a new one.");
+            MenuEngine.GeneralMessage("Config file not found. Creating a new one.");
 
-        return defaultConfig;
-
+            return defaultConfig;
         }
-        
     }
 
     static void WriteConfig(WolConfig config)
     {
-        string json = JsonSerializer.Serialize(config, new JsonSerializerOptions { WriteIndented = true });
+        // Use Source Generator Context for serialization
+        string json = JsonSerializer.Serialize(config, AppJsonSerializerContext.Default.WolConfig);
         File.WriteAllText(configPath, json);
     }
 
@@ -138,6 +144,7 @@ partial class Program
             }
         }
     }
+
     static async Task EnterBroadcastAddress()
     {
         string broadcastAddress = MenuEngine.TextInput("Enter broadcast address");
@@ -148,7 +155,6 @@ partial class Program
         if (confirm)
         {
             var config = ReadConfig();
-            
             config.BroadcastAddress = broadcastAddress;
             WriteConfig(config);
             MenuEngine.GeneralMessage($"Broadcast address entered: {broadcastAddress}");
@@ -205,7 +211,6 @@ partial class Program
         }
     }
 
-
     static async Task WakePC()
     {
         var config = ReadConfig();
@@ -222,15 +227,11 @@ partial class Program
             await EnterBroadcastAddress();
             return;
         }
-
         else
         {
             WolPackage.SendMagicPacket(config.MacAddress, config.BroadcastAddress);
             MenuEngine.GeneralMessage($"Sent Wake-on-LAN packet to {config.MacAddress}");
         }
-        
-
-        
     }
 
     static async Task SettingsMenuME()
@@ -244,7 +245,6 @@ partial class Program
         });
     }
 
-    
     static async Task ExitApp()
     {
         bool confirm = MenuEngine.YesNoPrompt(

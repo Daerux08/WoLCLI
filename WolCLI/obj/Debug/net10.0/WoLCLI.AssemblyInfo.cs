@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("WoLCLI")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+9a8691f13ccf6c7ab25971e1c67c728ea82b76ae")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+475da5ee1845c9c33860c9d477c4d83dabafff1f")]
 [assembly: System.Reflection.AssemblyProductAttribute("WoLCLI")]
 [assembly: System.Reflection.AssemblyTitleAttribute("WoLCLI")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

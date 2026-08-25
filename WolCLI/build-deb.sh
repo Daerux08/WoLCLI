@@ -26,7 +26,7 @@ ARCHS=("amd64" "arm64" "arm")
 
 for TARGET_ARCH in "${ARCHS[@]}"; do
     echo "=================================================="
-    echo "==> Building package for architecture: $TARGET_ARCH"
+    echo "==> Building Native AOT package for: $TARGET_ARCH"
     echo "=================================================="
 
     # Map architecture to .NET RID
@@ -41,8 +41,15 @@ for TARGET_ARCH in "${ARCHS[@]}"; do
     rm -rf "$PUBLISH_DIR"
     rm -rf "$DEB_DIR"
 
-    echo "==> Publishing the .NET application for $RID"
-    dotnet publish "$PROJECT_PATH" -c Release -r "$RID" --self-contained true -o "$PUBLISH_DIR"
+    echo "==> Publishing Native AOT .NET 10 application for $RID"
+    # Added -p:PublishAot=true and -p:StripSymbols=true for smaller binary size
+    dotnet publish "$PROJECT_PATH" \
+        -c Release \
+        -r "$RID" \
+        --self-contained true \
+        -p:PublishAot=true \
+        -p:StripSymbols=true \
+        -o "$PUBLISH_DIR"
 
     echo "==> Creating Debian package structure for $TARGET_ARCH"
     mkdir -p "$DEBIAN_DIR"
@@ -90,7 +97,7 @@ Architecture: $TARGET_ARCH
 Maintainer: Alexander
 Depends: $DEPENDS
 Description: Wake-on-LAN command line utility
- A lightweight tool to send Wake-on-LAN (WoL) magic packets to network devices.
+ A lightweight AOT-compiled tool to send Wake-on-LAN (WoL) magic packets.
 EOF
 
     echo "==> Creating post-installation scripts"

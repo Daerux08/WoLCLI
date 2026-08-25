@@ -1,11 +1,18 @@
 {
   "version": 2,
-  "dgSpecHash": "Gj3P9yM0yRM=",
+  "dgSpecHash": "wFcyYchgIa4=",
   "success": true,
   "projectFilePath": "/home/alexander/Documents/GitHub/WoLCLI/WolCLI/WoLCLI.csproj",
   "expectedPackageFiles": [
+    "/home/alexander/.nuget/packages/microsoft.dotnet.ilcompiler/10.0.10/microsoft.dotnet.ilcompiler.10.0.10.nupkg.sha512",
+    "/home/alexander/.nuget/packages/microsoft.net.illink.tasks/10.0.10/microsoft.net.illink.tasks.10.0.10.nupkg.sha512",
+    "/home/alexander/.nuget/packages/runtime.linux-arm64.microsoft.dotnet.ilcompiler/10.0.10/runtime.linux-arm64.microsoft.dotnet.ilcompiler.10.0.10.nupkg.sha512",
     "/home/alexander/.nuget/packages/spectre.console/0.57.2/spectre.console.0.57.2.nupkg.sha512",
-    "/home/alexander/.nuget/packages/spectre.console.ansi/0.57.2/spectre.console.ansi.0.57.2.nupkg.sha512"
+    "/home/alexander/.nuget/packages/spectre.console.ansi/0.57.2/spectre.console.ansi.0.57.2.nupkg.sha512",
+    "/home/alexander/.nuget/packages/microsoft.netcore.app.runtime.linux-arm64/10.0.10/microsoft.netcore.app.runtime.linux-arm64.10.0.10.nupkg.sha512",
+    "/home/alexander/.nuget/packages/microsoft.aspnetcore.app.runtime.linux-arm64/10.0.10/microsoft.aspnetcore.app.runtime.linux-arm64.10.0.10.nupkg.sha512",
+    "/home/alexander/.nuget/packages/microsoft.netcore.app.runtime.nativeaot.linux-arm64/10.0.10/microsoft.netcore.app.runtime.nativeaot.linux-arm64.10.0.10.nupkg.sha512",
+    "/home/alexander/.nuget/packages/runtime.linux-x64.microsoft.dotnet.ilcompiler/10.0.10/runtime.linux-x64.microsoft.dotnet.ilcompiler.10.0.10.nupkg.sha512"
   ],
   "logs": []
 }
