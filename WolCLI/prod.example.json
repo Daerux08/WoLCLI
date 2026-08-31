@@ -1,0 +1,17 @@
+{
+  "passwordHash": "",
+  "servers": [
+    {
+      "name": "office",
+      "macAddress": "AA:BB:CC:DD:EE:FF",
+      "broadcastAddress": "192.168.1.255",
+      "enabled": true
+    },
+    {
+      "name": "lab",
+      "macAddress": "11:22:33:44:55:66",
+      "broadcastAddress": "192.168.2.255",
+      "enabled": false
+    }
+  ]
+}

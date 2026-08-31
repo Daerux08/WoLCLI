@@ -8,19 +8,46 @@ using System.IO;
 using System.Text;
 using System.Text.Json.Serialization;
 
+public class ServerEntry
+{
+    [JsonPropertyName("name")]
+    public string? Name { get; set; }
+
+    [JsonPropertyName("macAddress")]
+    public string? MacAddress { get; set; }
+
+    [JsonPropertyName("broadcastAddress")]
+    public string? BroadcastAddress { get; set; }
+
+    [JsonPropertyName("enabled")]
+    public bool Enabled { get; set; } = true;
+}
+
+public class AppConfig
+{
+    [JsonPropertyName("servers")]
+    public List<ServerEntry> Servers { get; set; } = new List<ServerEntry>();
+
+    [JsonPropertyName("passwordHash")]
+    public string? PHash { get; set; }
+}
+
+// Keep the legacy single-entry type to support migration
 public class WolConfig
 {
     [JsonPropertyName("macAddress")]
     public string? MacAddress { get; set; }
-    
+
     [JsonPropertyName("passwordHash")]
-    public string? PHash { get; set; } 
+    public string? PHash { get; set; }
 
     [JsonPropertyName("broadcastAddress")]
     public string? BroadcastAddress { get; set; }
 }
 
 // ─── Native AOT JSON Source Generator Context ───
+[JsonSerializable(typeof(AppConfig))]
+[JsonSerializable(typeof(ServerEntry))]
 [JsonSerializable(typeof(WolConfig))]
 internal partial class AppJsonSerializerContext : JsonSerializerContext
 {
@@ -35,40 +62,74 @@ partial class Program
             "prod.json"
         );
 
-    static WolConfig ReadConfig()
+    static AppConfig ReadConfig()
     {
+        Directory.CreateDirectory(Path.GetDirectoryName(configPath)!);
+
         if (File.Exists(configPath))
         {
             string json = File.ReadAllText(configPath);
-            // Use Source Generator Context instead of reflection
-            return JsonSerializer.Deserialize(json, AppJsonSerializerContext.Default.WolConfig) 
-                   ?? new WolConfig { MacAddress = "", PHash = "", BroadcastAddress = "" };
-        }
-        else
-        {
-            Directory.CreateDirectory(Path.GetDirectoryName(configPath)!);
 
-            var defaultConfig = new WolConfig
+            // Try to deserialize as new AppConfig first
+            try
             {
-                MacAddress = "",
+                var appCfg = JsonSerializer.Deserialize(json, AppJsonSerializerContext.Default.AppConfig);
+                if (appCfg != null && appCfg.Servers != null && appCfg.Servers.Count > 0)
+                    return appCfg;
+            }
+            catch { }
+
+            // Fallback: try legacy single-entry WolConfig and migrate
+            try
+            {
+                var legacy = JsonSerializer.Deserialize(json, AppJsonSerializerContext.Default.WolConfig);
+                if (legacy != null)
+                {
+                    var migrated = new AppConfig();
+                    migrated.PHash = legacy.PHash;
+                    migrated.Servers.Add(new ServerEntry
+                    {
+                        Name = "default",
+                        MacAddress = legacy.MacAddress ?? "",
+                        BroadcastAddress = legacy.BroadcastAddress ?? "",
+                        Enabled = true
+                    });
+
+                    WriteConfig(migrated);
+                    MenuEngine.GeneralMessage("Migrated legacy config to servers list.");
+                    return migrated;
+                }
+            }
+            catch { }
+
+            // If all else fails, return a default empty config and write it
+            var defaultConfig = new AppConfig
+            {
                 PHash = "",
-                BroadcastAddress = ""
+                Servers = new List<ServerEntry> { new ServerEntry { Name = "default", MacAddress = "", BroadcastAddress = "", Enabled = true } }
             };
 
-            // Use Source Generator Context here as well
-            string json = JsonSerializer.Serialize(defaultConfig, AppJsonSerializerContext.Default.WolConfig);
-            File.WriteAllText(configPath, json);
-
-            MenuEngine.GeneralMessage("Config file not found. Creating a new one.");
-
+            string outJson = JsonSerializer.Serialize(defaultConfig, AppJsonSerializerContext.Default.AppConfig);
+            File.WriteAllText(configPath, outJson);
+            MenuEngine.GeneralMessage("Config file created or repaired.");
             return defaultConfig;
         }
+
+        // Create directory and default config if file does not exist
+        var newConfig = new AppConfig
+        {
+            PHash = "",
+            Servers = new List<ServerEntry> { new ServerEntry { Name = "default", MacAddress = "", BroadcastAddress = "", Enabled = true } }
+        };
+        string newJson = JsonSerializer.Serialize(newConfig, AppJsonSerializerContext.Default.AppConfig);
+        File.WriteAllText(configPath, newJson);
+        MenuEngine.GeneralMessage("Config file not found. Creating a new one.");
+        return newConfig;
     }
 
-    static void WriteConfig(WolConfig config)
+    static void WriteConfig(AppConfig config)
     {
-        // Use Source Generator Context for serialization
-        string json = JsonSerializer.Serialize(config, AppJsonSerializerContext.Default.WolConfig);
+        string json = JsonSerializer.Serialize(config, AppJsonSerializerContext.Default.AppConfig);
         File.WriteAllText(configPath, json);
     }
 
@@ -85,6 +146,7 @@ partial class Program
             await MenuEngine.DisplayMenuAsync(new List<(string, Func<Task>)>
             {
                 ("Wake the PC", PasswordPrompt),
+                ("Wake all", WakeAll),
                 ("⚙️ Settings", SettingsMenuME),
                 ("❌ Exit", ExitApp)
             });
@@ -93,7 +155,8 @@ partial class Program
 
     static async Task PasswordPrompt()
     {
-        if (string.IsNullOrEmpty(ReadConfig().PHash))
+        var cfg = ReadConfig();
+        if (string.IsNullOrEmpty(cfg.PHash))
         {
             await WakePC();
         }
@@ -127,14 +190,14 @@ partial class Program
     static async Task ReadJSON()
     {
         var config = ReadConfig();
-        
-        if (!string.IsNullOrEmpty(config.MacAddress))
+
+        if (config.Servers != null && config.Servers.Count > 0 && !string.IsNullOrEmpty(config.Servers[0].MacAddress))
         {
-            MenuEngine.GeneralMessage($"MAC address loaded: {config.MacAddress}");
+            MenuEngine.GeneralMessage($"Primary MAC address loaded: {config.Servers[0].MacAddress}");
         }
         else
         {
-            MenuEngine.ErrorMessage("MAC address not found in JSON.");
+            MenuEngine.ErrorMessage("No MAC address found in config.");
             bool confirm = MenuEngine.YesNoPrompt("Would you like to enter a MAC address now?",
                 "[green]Proceeding...[/]",
                 "[red]Please enter the MAC address of the target PC[/]");
@@ -155,7 +218,10 @@ partial class Program
         if (confirm)
         {
             var config = ReadConfig();
-            config.BroadcastAddress = broadcastAddress;
+            if (config.Servers == null || config.Servers.Count == 0)
+                config.Servers = new List<ServerEntry> { new ServerEntry { Name = "default" } };
+
+            config.Servers[0].BroadcastAddress = broadcastAddress;
             WriteConfig(config);
             MenuEngine.GeneralMessage($"Broadcast address entered: {broadcastAddress}");
         }
@@ -175,7 +241,10 @@ partial class Program
         if (confirm)
         {
             var config = ReadConfig();
-            config.MacAddress = macAddress;
+            if (config.Servers == null || config.Servers.Count == 0)
+                config.Servers = new List<ServerEntry> { new ServerEntry { Name = "default" } };
+
+            config.Servers[0].MacAddress = macAddress;
             WriteConfig(config);
             MenuEngine.GeneralMessage($"MAC address entered: {macAddress}");
         }
@@ -214,24 +283,30 @@ partial class Program
     static async Task WakePC()
     {
         var config = ReadConfig();
-        if (string.IsNullOrEmpty(config.MacAddress))
+        if (config.Servers == null || config.Servers.Count == 0)
+        {
+            MenuEngine.ErrorMessage("No server configured. Please enter a MAC address first.");
+            await EnterMac();
+            return;
+        }
+
+        var primary = config.Servers[0];
+        if (string.IsNullOrEmpty(primary.MacAddress))
         {
             MenuEngine.ErrorMessage("MAC address not found. Please enter a MAC address first.");
             await EnterMac();
             return;
         }
 
-        if (string.IsNullOrEmpty(config.BroadcastAddress))
+        if (string.IsNullOrEmpty(primary.BroadcastAddress))
         {
             MenuEngine.ErrorMessage("Broadcast address not found. Please enter a broadcast address first.");
             await EnterBroadcastAddress();
             return;
         }
-        else
-        {
-            WolPackage.SendMagicPacket(config.MacAddress, config.BroadcastAddress);
-            MenuEngine.GeneralMessage($"Sent Wake-on-LAN packet to {config.MacAddress}");
-        }
+
+        WolPackage.SendMagicPacket(primary.MacAddress, primary.BroadcastAddress);
+        MenuEngine.GeneralMessage($"Sent Wake-on-LAN packet to {primary.MacAddress}");
     }
 
     static async Task SettingsMenuME()
@@ -241,8 +316,127 @@ partial class Program
             ("🌐 MAC Address", EnterMac),
             ("🔒 Password", EnterPassword),
             ("📡 Broadcast Address", EnterBroadcastAddress),
+            ("🗂️ Manage Servers", ManageServersMenu),
             ("⬅️ Back", async () => { throw new GoBackException(); })
         });
+    }
+
+    static async Task ManageServersMenu()
+    {
+        while (true)
+        {
+            var cfg = ReadConfig();
+            var options = new List<string>();
+            if (cfg.Servers != null && cfg.Servers.Count > 0)
+            {
+                foreach (var s in cfg.Servers)
+                {
+                    string status = s.Enabled ? "(enabled)" : "(disabled)";
+                    options.Add($"{s.Name ?? "unnamed"} {status} - {s.MacAddress}");
+                }
+            }
+            options.Add("+ Add Server");
+            options.Add("⬅️ Back");
+
+            int choice = MenuEngine.ShowArrowMenu("Manage Servers", options);
+
+            if (choice < (cfg.Servers?.Count ?? 0))
+            {
+                await EditServerByIndex(choice);
+                continue;
+            }
+
+            int adjusted = choice - (cfg.Servers?.Count ?? 0);
+            if (options[choice] == "+ Add Server")
+            {
+                await AddServer();
+                continue;
+            }
+
+            // Back
+            return;
+        }
+    }
+
+    static async Task AddServer()
+    {
+        string name = MenuEngine.TextInput("Enter server name");
+        string mac = MenuEngine.TextInput("Enter MAC address");
+        string broadcast = MenuEngine.TextInput("Enter broadcast address (optional)");
+
+        bool confirm = MenuEngine.YesNoPrompt("Add this server?",
+            $"[green]{name} added[/]",
+            "[red]Cancelled[/]");
+
+        if (!confirm) return;
+
+        var cfg = ReadConfig();
+        cfg.Servers ??= new List<ServerEntry>();
+        cfg.Servers.Add(new ServerEntry { Name = name, MacAddress = mac, BroadcastAddress = broadcast, Enabled = true });
+        WriteConfig(cfg);
+        MenuEngine.GeneralMessage($"Server {name} added.");
+    }
+
+    static async Task EditServerByIndex(int idx)
+    {
+        var cfg = ReadConfig();
+        if (cfg.Servers == null || idx < 0 || idx >= cfg.Servers.Count) return;
+
+        var s = cfg.Servers[idx];
+
+        await MenuEngine.DisplayMenuAsync(new List<(string, Func<Task>)>
+        {
+            ($"✏️ Edit name ({s.Name})", async () => { s.Name = MenuEngine.TextInput("Enter new name"); WriteConfig(cfg); MenuEngine.GeneralMessage("Name updated"); }),
+            ($"🖧 Edit MAC ({s.MacAddress})", async () => { s.MacAddress = MenuEngine.TextInput("Enter new MAC"); WriteConfig(cfg); MenuEngine.GeneralMessage("MAC updated"); }),
+            ($"📡 Edit broadcast ({s.BroadcastAddress})", async () => { s.BroadcastAddress = MenuEngine.TextInput("Enter new broadcast"); WriteConfig(cfg); MenuEngine.GeneralMessage("Broadcast updated"); }),
+            ($"🔁 Toggle enabled ({(s.Enabled?"enabled":"disabled")})", async () => { s.Enabled = !s.Enabled; WriteConfig(cfg); MenuEngine.GeneralMessage($"Enabled={s.Enabled}"); }),
+            ($"🗑️ Delete server", async () => {
+                bool conf = MenuEngine.YesNoPrompt($"Delete {s.Name ?? s.MacAddress}?","[green]Deleted[/]","[red]Cancelled[/]");
+                if (conf) { cfg.Servers.RemoveAt(idx); WriteConfig(cfg); MenuEngine.GeneralMessage("Deleted"); throw new GoBackException(); }
+            }),
+            ("⬅️ Back", async () => { throw new GoBackException(); })
+        });
+    }
+
+    static async Task WakeAll()
+    {
+        var cfg = ReadConfig();
+        var servers = cfg.Servers ?? new List<ServerEntry>();
+        var enabled = servers.FindAll(s => s.Enabled);
+        if (enabled.Count == 0)
+        {
+            MenuEngine.ErrorMessage("No enabled servers found in config.");
+            return;
+        }
+
+        var tasks = new List<Task<string>>();
+        foreach (var s in enabled)
+        {
+            if (string.IsNullOrWhiteSpace(s.MacAddress))
+            {
+                tasks.Add(Task.FromResult($"Skipped {s.Name ?? "unnamed"}: no MAC address"));
+                continue;
+            }
+
+            string bc = string.IsNullOrWhiteSpace(s.BroadcastAddress) ? null : s.BroadcastAddress;
+
+            tasks.Add(Task.Run(() =>
+            {
+                try
+                {
+                    WolPackage.SendMagicPacket(s.MacAddress!, bc);
+                    return $"Sent Wake-on-LAN packet to {s.MacAddress} ({s.Name})";
+                }
+                catch (Exception ex)
+                {
+                    return $"Failed {s.Name ?? s.MacAddress}: {ex.Message}";
+                }
+            }));
+        }
+
+        var results = await Task.WhenAll(tasks);
+        foreach (var r in results)
+            MenuEngine.GeneralMessage(r);
     }
 
     static async Task ExitApp()
